@@ -4,9 +4,15 @@ import json
 import redis
 from dotenv import load_dotenv
 import os
-
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 load_dotenv()
 app = Flask(__name__)
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"]
+)
 
 try:
     r = redis.Redis(
@@ -20,6 +26,7 @@ except redis.ConnectionError as e:
     print(f"Could not connect to Redis: {e}")
 
 @app.route('/weather/<location>')
+@limiter.limit("5 per minute")
 def get_weather(location):
     cache_key = f'{location.lower()}'
     cached_weather = r.get(cache_key)
